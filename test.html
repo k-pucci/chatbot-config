@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+  </head>
+  <body>
+<script>
+
+(function () {
+  function isRunningInSharePoint() {
+    const isSharePoint = 
+      window.location.hostname.includes('sharepoint.com') ||
+      window._spPageContextInfo !== undefined ||
+      window.SP !== undefined ||
+      document.querySelector('meta[name="ms.sharepointpnp.core"]') !== null ||
+      document.querySelector('script[src*="SharePoint"]') !== null;
+    
+    return isSharePoint;
+  }
+
+  if (!isRunningInSharePoint()) {
+    console.warn('Chatbot disabled: Not running in authorized environment');
+    
+    // Show error message instead of chatbot
+    const errorHTML = `
+      <div style="
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%);
+        background: white; 
+        padding: 20px; 
+        border: 2px solid #ff4444;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+        text-align: center;
+      ">
+        <h3 style="color: #ff4444; margin: 0 0 10px 0;">Access Denied</h3>
+        <p style="margin: 0;">This chatbot is only available on authorized domains.</p>
+      </div>
+    `;
+    
+    document.body.innerHTML = errorHTML;
+    return; // Stop execution
+  }
+
+  if (window.top !== window.self && !isRunningInSharePoint()) {
+    console.warn('Chatbot disabled: Unauthorized embedding detected');
+    return;
+  }
+
+  const allowedDomains = [
+    'sharepoint.com',
+    'personalai.sharepoint.com'
+  ];
+
+  const currentDomain = window.location.hostname.toLowerCase();
+  const isAuthorizedDomain = allowedDomains.some(domain => 
+    currentDomain.includes(domain)
+  );
+
+  if (!isAuthorizedDomain) {
+    console.warn('Chatbot disabled: Unauthorized domain');
+    return;
+  }
+
+  if (window.location.protocol === 'file:') {
+    console.warn('Chatbot disabled: Direct file access not allowed');
+    return;
+  }
+
+  console.log('Chatbot security checks passed - initializing...'); 
+
+    const config = {
+  domainName: "",
+  apiEndpoint: "/api/chat", 
+  
+      initialMessage: "Welcome! I'm Perplexity, how can I help you today?",
+      aiAvatarUrl: "https://lis-profile-images-prod.s3-us-west-2.amazonaws.com/5GHT0JJUJT7H7NGBK4RVVYY0VM4TTY.jpg",
+      userAvatarUrl: "https://lis-profile-images-prod.s3-us-west-2.amazonaws.com/5GHT0JJUJT7H7NGBK4RVVYY0VM4TTY.jpg",
+      chatbotName: "Perplexity",
+      sendButtonColor: "none",
+      messageIconColor: "#f30b23",
+      overlayColor: "rgba(25, 118, 210, 0.3)",
+      overlayBlur: "5px",
+      aiMessageColor: "transparent",
+      aiMessageTextColor: "#000000",
+      userMessageColor: "transparent",
+      userMessageTextColor: "#000000",
+      typingIndicatorColor: "#f30b23",
+};
+
+    // Inject CSS styles
+    function injectStyles() {
+      const styles = `
+        /* Base & Typography */
+        @import url('https://fonts.googleapis.com/css?family=Inter');
+
+        /* Screen Reader styles */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Focus styles */
+        *:focus {
+            outline: 3px solid #2196F3;
+            outline-offset: 2px;
+        }
+
+        *:focus-visible {
+            outline: 3px solid #2196F3;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Hide focus rings for non-keyboard navigation */
+        *:focus:not(:focus-visible) {
+            outline: none;
+            box-shadow: none;
+        }
+
+        /* Base styles */
+        #personal-ai-chat-widget {
+            font-family: "Inter", sans-serif !important;
+        }
+
+        /* Form Input Styles */
+        input, textarea, .pai-chat-input, .pai-chat-fixed-input {
+            font-size: 16px !important;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        @supports (-webkit-touch-callout: none) {
+            .pai-chat-input, .pai-chat-fixed-input {
+                font-size: 16px !important;
+                transform: scale(1);
+                -webkit-text-size-adjust: 100%;
+                touch-action: manipulation;
+            }
+        }
+
+        .pai-chat-dropdown-button {
+            display: none !important;
+        }
+
+        #personal-ai-chat-widget > div.pai-chat-window > div.pai-chat-header > div > div {
+            display: none !important;
+        }
+
+
+        /* Avatar Styles */
+        .pai-chat-avatar-wrapper {
+            margin-right: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pai-chat-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 20px 0px 20px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Chat Bubble */
+        .pai-chat-bubble-wrapper {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: transparent;
+        }
+
+        .pai-chat-bubble {
+            background-color: transparent;
+            border: 1px solid #EFF0F6;
+            border-radius: 0 20px 20px 20px;
+            padding: 10px 15px 15px 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.075);
+            max-width: 300px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pai-chat-text {
+            font-size: 14px;
+            line-height: 1.4;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+        }
+
+
+        /* Chat Window */
+        .pai-chat-window {
+            display: flex;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            background-color: transparent !important; /* Changed from transparent for better contrast */
+            border-radius: 20px;
+            flex-direction: column;
+            z-index: 1002;
+            overflow: hidden;
+            transition: all 0.3s ease-in-out;
+            opacity: 0;
+            animation: fadeIn 2s ease forwards;
+        }
+
+        .pai-chat-window.blurred {
+            filter: blur(5px);
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .pai-chat-open .pai-chat-window,
+        .pai-chat-open .pai-chat-overlay {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Chat Header */
+        .pai-chat-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+            position: relative;
+            background: transparent; /* Changed from transparent */
+        }
+
+        .pai-chat-header-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .pai-chat-avatar-header {
+            width: 60px;
+            height: 60px;
+            border-radius: 20%;
+            margin-bottom: 10px;
+        }
+
+        .pai-chat-title {
+            font-size: 20px; /* Increased for better visibility */
+            font-weight: bold;
+            color: #2B263E;
+            margin-bottom: 10px;
+        }
+
+        /* Chat Close Button */
+        .pai-chat-close {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Overlay */
+        .pai-chat-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(140, 167, 196, 0.35);
+            backdrop-filter: blur(3px);
+            z-index: 1001;
+        }
+
+        .pai-chat-open .pai-chat-message-icon.expanded {
+            display: none !important;
+        }
+
+        /* Messages Container */
+        .pai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: transparent !important; 
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+            padding-bottom: 20px !important; 
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            outline: none;
+            position: relative;
+            max-height: calc(100% - 60px);
+            margin-bottom: 60px;
+        }
+
+        .pai-chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .pai-chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .pai-chat-messages::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .pai-chat-messages:focus-visible {
+            outline: 3px solid #6656ff;
+            outline-offset: -3px;
+        }
+
+        /* Message Bubbles */
+        .pai-chat-message {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            max-width: 85%;
+            background-color: transparent;
+        }
+
+        .pai-chat-message.ai {
+            align-self: flex-start;
+            margin-right: 10%;
+            background-color: transparent !important;
+        }
+
+        .pai-chat-message.user {
+            align-self: flex-end;
+            margin-left: 15%;
+            animation: fadeInUp 0.3s ease forwards;
+            background-color: transparent !important;
+        }
+
+        .pai-chat-message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px 0px 10px 10px;
+            margin: 0 8px;
+        }
+
+        .pai-chat-message-content {
+            position: relative;
+            background-color: white; /* Updated for consistency */
+            border-radius: 15px;
+            padding: 12px; /* Increased for better readability */
+            width: 100%;
+            max-width: calc(100% - 60px);
+            border: 1px solid #EFF0F6;
+        }
+
+        .pai-chat-message.ai .pai-chat-message-content {
+            border-top-left-radius: 0;
+        }
+
+        .pai-chat-message.ai .pai-chat-message-text br {
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .pai-chat-message.user .pai-chat-message-content {
+            border-radius: 0px 20px 20px 20px;
+            margin-right: 0;
+              max-width: 100%;
+
+        } 
+
+        .pai-chat-message.user .pai-chat-message-text {
+            margin-bottom: 0px;
+        }
+
+        .pai-chat-message-text a {
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  display: inline-block;
+}
+
+.pai-chat-message-content {
+  position: relative;
+  background-color: white;
+  border-radius: 15px;
+  padding: 12px;
+  width: 100%;
+  max-width: calc(100% - 60px);
+  border: 1px solid #EFF0F6;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+        /* Message Header */
+        .pai-chat-message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px; /* Increased */
+        }
+
+        .pai-chat-message-name {
+            font-size: 14px; /* Increased */
+            font-weight: bold;
+            color: #666;
+            margin: 0;
+        }
+
+        .pai-chat-message-time {
+            font-size: 12px; /* Increased */
+            margin-left: 5px;
+            color: #888;
+        }
+
+.pai-chat-message-text {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #323232;
+  font-family: 'Inter', sans-serif;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+        /* Fixed Input Area Styles */
+        .pai-chat-footer-input {
+            position: absolute;
+            bottom: 5px; /* Position above the footer */
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: none;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .pai-chat-footer-input-wrapper {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 12px 15px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) inset;
+        }
+
+        .pai-chat-fixed-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            line-height: 1.4;
+            color: #323232;
+            outline: none;
+            resize: none !important;
+            max-height: 100px;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .pai-chat-fixed-input::placeholder {
+            color: #8F8F8F;
+        }
+
+        .pai-chat-send-button {
+            background: none;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background-color 0.2s ease;
+        }
+
+        .pai-chat-send-button svg {
+            width: 18px;
+            height: 18px;
+            fill: #194065;
+        }
+
+        /* Typing Indicator */
+        .pai-chat-typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px;
+        }
+
+        .pai-chat-typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #053a62;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: typing .5s infinite ease-in-out;
+        }
+
+        .pai-chat-typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .pai-chat-typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        /* Footer */
+        .pai-chat-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            background: none;
+            pointer-events: none;
+            padding-bottom: 10px;
+        }
+
+        .pai-powered-by {
+            font-size: 11px;
+            color: #666;
+            opacity: 0.7;
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            pointer-events: auto;
+            opacity: 1;
+            text-decoration: none;
+        }
+
+        .pai-powered-by img {
+            height: 23px;
+            width: 125px;
+            margin-top: 0;
+            opacity: 1;
+        }
+
+        /* Animations */
+        @keyframes typing {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Enhanced accessibility styles for focus states */
+        .pai-chat-send-button:focus-visible,
+        .pai-chat-message-icon:focus-visible,
+        .pai-chat-close:focus-visible {
+            outline: 3px solid #2196F3;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.4);
+        }
+
+        /* Media Queries */
+        @media (max-width: 991px) {
+            .pai-chat-initiator {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                top: auto;
+                left: auto;
+                transform: none;
+            }
+
+            .pai-chat-initiator .pai-chat-avatar {
+                width: 50px;
+                height: 50px;
+                object-fit: cover;
+                border-radius: 10px 0 10px 10px;
+            }
+
+            .pai-chat-message-icon.expanded {
+                position: fixed !important;
+                bottom: 20px !important;
+                right: 20px !important;
+                top: auto !important;
+                left: auto !important;
+                transform: scale(1.5) !important;
+            }
+
+            .pai-chat-window {
+                width: 100%;
+                height: 100vh;
+                max-height: 100vh;
+                top: 0;
+                left: 0;
+                transform: none;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            .pai-chat-bubble {
+                max-width: 250px;
+            }
+
+            /* Enhanced touch targets for mobile */
+            .pai-chat-close,
+            .pai-chat-send-button {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .pai-chat-initiator {
+                bottom: 20px;
+                right: 20px;
+                transform: scale(0.9);
+            }
+
+            .pai-chat-initiator .pai-chat-avatar {
+                width: 40px;
+                height: 40px;
+                object-fit: cover;
+                border-radius: 8px 0 8px 8px;
+            }
+
+            .pai-chat-bubble {
+                max-width: 200px;
+                padding: 8px 12px;
+            }
+
+            .pai-chat-text {
+                font-size: 13px;
+                min-height: 40px;
+            }
+
+            .pai-intake-form {
+                width: 90%;
+                max-width: none;
+                padding: 20px 15px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                margin: 0;
+            }
+
+            .pai-chat-message-content {
+                max-width: calc(100% - 50px);
+            }
+
+            .pai-chat-footer-input-wrapper {
+                padding: 10px;
+            }
+
+            /* Improved form controls for mobile */
+            .pai-form-group input,
+            .pai-chat-fixed-input {
+                font-size: 16px !important;
+                padding: 12px;
+            }
+
+            /* Enhanced touch targets for mobile */
+            .pai-chat-close,
+            .pai-intake-close,
+            .pai-chat-send-button {
+                min-width: 44px;
+                min-height: 44px;
+                padding: 12px;
+            }
+
+            .pai-chat-messages {
+                padding-bottom: 120px;
+            }
+            
+            .pai-powered-by {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            
+            .pai-powered-by img {
+                height: 22px;
+                padding-bottom: 4px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .pai-chat-bubble {
+                max-width: 180px;
+            }
+
+            .pai-chat-text {
+                font-size: 12px;
+            }
+
+            .pai-chat-message-content {
+                max-width: calc(100% - 40px);
+            }
+
+            .pai-chat-message {
+                max-width: 98%;
+            }
+
+            .pai-chat-footer-input {
+                padding: 10px;
+            }
+        }
+
+        /* High Contrast Mode Support */
+        @media (forced-colors: active) {
+            .pai-chat-message-icon,
+            .pai-chat-close,
+            .pai-chat-send-button {
+                border: 2px solid ButtonText;
+            }
+
+            .pai-chat-fixed-input:focus,
+            .pai-form-group input:focus {
+                outline: 2px solid Highlight;
+            }
+
+            /* Ensure buttons are visible */
+            .pai-chat-close,
+            .pai-intake-close,
+            .pai-chat-send-button {
+                forced-color-adjust: none;
+                background: ButtonFace;
+                color: ButtonText;
+            }
+
+            /* Ensure form controls have sufficient contrast */
+            .pai-form-group input,
+            .pai-chat-fixed-input {
+                background: Field;
+                color: FieldText;
+                border: 1px solid ButtonText;
+            }
+        }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+
+            .pai-chat-typing-indicator span {
+                animation: none !important;
+            }
+
+            .pai-chat-message.user {
+                animation: none !important;
+            }
+
+            .pai-chat-window {
+                animation: none !important;
+            }
+
+            /* Smooth transitions for essential interactions */
+            .pai-chat-close:hover,
+            .pai-chat-close:focus {
+                transition: box-shadow 0.1s linear;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            .pai-chat-window {
+                position: relative;
+                transform: none;
+                width: 100%;
+                height: auto;
+            }
+
+            .pai-chat-messages {
+                overflow: visible;
+            }
+
+            .pai-chat-footer-input,
+            .pai-chat-send-button,
+            .pai-chat-close {
+                display: none !important;
+            }
+        }
+      `;
+
+      const styleElement = document.createElement("style");
+      styleElement.textContent = styles;
+      document.head.appendChild(styleElement);
+    }
+
+    // Function to inject HTML
+    function injectHTML() {
+      const html = `
+    <div id="aria-live-region" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="personal-ai-chat-widget" class="pai-chat-open">
+        <!-- Overlay -->
+        <div class="pai-chat-overlay"></div>
+
+        <!-- Chat Window -->
+        <div id="chat-window" class="pai-chat-window" role="region" aria-label="Chat conversation">
+            <div class="pai-chat-header" role="banner">
+                <div class="pai-chat-header-content">
+                    <img id="ai-avatar-header" src="" alt="" class="pai-chat-avatar-header" aria-hidden="true">
+                    <span id="chat-title" class="pai-chat-title" role="heading" aria-level="1">Chat with AI</span>
+                </div>
+                <button class="pai-chat-close" aria-label="Close chat">&times;</button>
+            </div>
+
+            <div id="chat-main" 
+                class="pai-chat-messages" 
+                role="log" 
+                aria-relevant="additions">
+                <!-- Messages will be dynamically added here -->
+            </div>
+
+            <!-- Fixed Input Area -->
+            <div class="pai-chat-footer-input">
+                <div class="pai-chat-footer-input-wrapper">
+                    <textarea class="pai-chat-fixed-input" 
+                            placeholder="Type your message..." 
+                            rows="1"
+                            aria-label="Type your message. Press Enter to send, Escape to close chat"></textarea>
+                    <button class="pai-chat-send-button" aria-label="Send message">
+                        <svg viewBox="0 0 16 13" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                            <path d="M1.375 12.7918C1.16667 12.8751 0.96875 12.8577 0.78125 12.7397C0.59375 12.6216 0.5 12.4515 0.5 12.2293V8.54177C0.5 8.38899 0.545139 8.25704 0.635417 8.14593C0.725694 8.03482 0.840278 7.96538 0.979167 7.9376L6.79167 6.5001L0.979167 5.02093C0.840278 4.99315 0.725694 4.92371 0.635417 4.8126C0.545139 4.70149 0.5 4.56954 0.5 4.41677V0.770932C0.5 0.54871 0.59375 0.378571 0.78125 0.260515C0.96875 0.14246 1.16667 0.125099 1.375 0.208432L14.9583 5.91677C15.2083 6.02788 15.3333 6.22232 15.3333 6.5001C15.3333 6.77788 15.2083 6.97232 14.9583 7.08343L1.375 12.7918Z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+      `;
+
+      // Create a container for HTML
+      const container = document.createElement("div");
+      container.innerHTML = html;
+
+      // Append the elements to the body
+      while (container.firstChild) {
+        document.body.appendChild(container.firstChild);
+      }
+    }
+
+    // Core functionality
+    function initializeChatbot() {
+      const chatWidget = document.getElementById("personal-ai-chat-widget");
+      const chatWindow = document.getElementById("chat-window");
+      const chatOverlay = chatWidget.querySelector(".pai-chat-overlay");
+      const chatClose = chatWidget.querySelector(".pai-chat-close");
+      const chatMessages = chatWidget.querySelector(".pai-chat-messages");
+      const sendButton = document.querySelector(".pai-chat-send-button");
+
+      const WEBHOOK_URL = "";
+      const initialMessage = config.initialMessage;
+
+      const KEYBOARD_INSTRUCTIONS = {
+        CHAT: "Press Enter to send message, Escape to close",
+      };
+
+      const messagesContainer = document.querySelector(".pai-chat-messages");
+      messagesContainer.setAttribute("aria-live", "polite");
+      messagesContainer.setAttribute("aria-atomic", "false");
+      messagesContainer.setAttribute("aria-relevant", "additions");
+
+      let sessionId = "user" + Date.now();
+      let initialMessageSent = false;
+      let lastFocusedElement = null;
+
+      let announceTimeoutId = null;
+      let lastAnnouncement = "";
+      let inputEnabled = true;
+      let fixedInput = document.querySelector(".pai-chat-fixed-input");
+
+      function createWelcomeAnnouncer() {
+        const welcomeAnnouncer = document.createElement("div");
+        welcomeAnnouncer.id = "welcome-message-announcer";
+        welcomeAnnouncer.setAttribute("aria-live", "assertive");
+        welcomeAnnouncer.setAttribute("role", "alert");
+        welcomeAnnouncer.classList.add("sr-only");
+        document.body.appendChild(welcomeAnnouncer);
+        return welcomeAnnouncer;
+      }
+
+      // Delay focus on input until welcome message is finished
+      function temporarilyDisableInputFocus() {
+        const inputField = document.querySelector(".pai-chat-fixed-input");
+        if (!inputField) return function () {};
+
+        const originalTabIndex = inputField.tabIndex;
+
+        inputField.tabIndex = -1;
+        inputField.setAttribute("aria-hidden", "true");
+
+        return function () {
+          inputField.tabIndex = originalTabIndex;
+          inputField.removeAttribute("aria-hidden");
+
+          setTimeout(() => {
+            inputField.focus();
+          }, 100);
+        };
+      }
+
+      function typeWelcomeMessage() {
+        const chatbotName = config.chatbotName || "AI Assistant";
+
+        const styleEl = document.createElement("style");
+        styleEl.textContent = `
+        /* Hide focus on welcome message, but keep them visible for keyboard navigation */
+        .pai-chat-message[data-welcome="true"]:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Only show focus for keyboard navigation */
+        .pai-chat-message[data-welcome="true"]:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+    `;
+        document.head.appendChild(styleEl);
+
+        const messagesContainer = document.querySelector(".pai-chat-messages");
+        if (!messagesContainer) return;
+
+        const welcomeMessageEl = messagesContainer.querySelector(
+          ".pai-chat-message.ai"
+        );
+        if (!welcomeMessageEl) return;
+
+        const messageTextElement = welcomeMessageEl.querySelector(
+          ".pai-chat-message-text"
+        );
+        if (!messageTextElement) return;
+
+        messageTextElement.innerHTML = formatMessage(initialMessage);
+
+        welcomeMessageEl.setAttribute("data-welcome", "true");
+
+        welcomeMessageEl.setAttribute("tabindex", "0");
+        welcomeMessageEl.setAttribute("role", "article");
+        welcomeMessageEl.setAttribute(
+          "aria-label",
+          `${chatbotName} says: ${initialMessage}`
+        );
+
+        welcomeMessageEl.focus();
+
+        setTimeout(() => {
+          if (fixedInput) {
+            fixedInput.disabled = false;
+            resetInputState();
+            fixedInput.focus();
+          }
+        }, 10000); // Delay before moving to input field
+      }
+
+      function interceptFocusEvents() {
+        const originalSetTimeout = window.setTimeout;
+
+        window.setTimeout = function (callback, delay) {
+          if (
+            typeof callback === "function" &&
+            callback.toString().includes("focus") &&
+            delay < 3000
+          ) {
+
+            return originalSetTimeout(callback, 6000); 
+          }
+
+          return originalSetTimeout(callback, delay);
+        };
+
+        setTimeout(function () {
+          window.setTimeout = originalSetTimeout;
+        }, 10000); 
+      }
+
+      function formatMessage(text) {
+        const containsHTML = /<[a-z][\s\S]*>/i.test(text);
+
+        if (containsHTML) {
+          text = text.replace(/\n(?![^<]*>)/g, "<br>");
+
+          text = text.replace(
+            /<a\s+(?![^>]*target=)[^>]*href=["']([^"']+)["'][^>]*>/gi,
+            function (match, url) {
+              return match.replace(
+                />$/,
+                ' target="_blank" rel="noopener noreferrer" style="color: #6566FF; text-decoration: none; font-weight: 500;">'
+              );
+            }
+          );
+
+          return text;
+        }
+
+        text = text.replace(/\r\n/g, "\n");
+
+        const urlRegex =
+          /(https?:\/\/[^\s\)\]\.,:;"']+(?:\.[^\s\)\]\.,:;"']+)+(?:\/[^\s\)\]\.,:;"']*)*)/g;
+
+        text = text.replace(urlRegex, function (url) {
+          const cleanUrl = url.replace(/[.,;:!?]$/, "");
+          return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #6566FF; text-decoration: none; font-weight: 500;">${cleanUrl}</a>`;
+        });
+
+        text = text.replace(
+          /(?<=^|\s)(www\.[^\s\)\]\.,:;"']+(?:\.[^\s\)\]\.,:;"']+)+(?:\/[^\s\)\]\.,:;"']*)*)/g,
+          function (url) {
+            const cleanUrl = url.replace(/[.,;:!?]$/, "");
+            return `<a href="https://${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #6566FF; text-decoration: none; font-weight: 500;">${cleanUrl}</a>`;
+          }
+        );
+
+        const bulletPatterns = [
+          { pattern: /^•\s+/m, type: "bullet" },
+          { pattern: /^-\s+/m, type: "dash" },
+          { pattern: /^\*\s+/m, type: "asterisk" },
+          { pattern: /^×\s+/m, type: "times" },
+          { pattern: /^·\s+/m, type: "middot" },
+          { pattern: /^○\s+/m, type: "circle" },
+          { pattern: /^■\s+/m, type: "square" },
+          { pattern: /^➤\s+/m, type: "arrow" },
+          { pattern: /^✓\s+/m, type: "check" },
+          { pattern: /^\d+\.\s+/m, type: "numbered" },
+        ];
+
+        const hasBullets = bulletPatterns.some((bp) => bp.pattern.test(text));
+
+        if (hasBullets) {
+          let lines = text.split("\n");
+          let processedLines = [];
+          let currentList = null;
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) {
+              if (currentList) {
+                processedLines.push(currentList === "ol" ? "</ol>" : "</ul>");
+                currentList = null;
+              }
+              processedLines.push("");
+              continue;
+            }
+
+            let matched = false;
+
+            for (const bp of bulletPatterns) {
+              if (bp.type !== "numbered" && line.match(bp.pattern)) {
+                if (currentList !== "ul") {
+                  if (currentList) {
+                    processedLines.push(
+                      currentList === "ol" ? "</ol>" : "</ul>"
+                    );
+                  }
+                  processedLines.push(
+                    '<ul style="margin: 0.5em 0; padding-left: 1.5em;">'
+                  );
+                  currentList = "ul";
+                }
+
+                processedLines.push(
+                  "<li>" + line.replace(bp.pattern, "") + "</li>"
+                );
+                matched = true;
+                break;
+              }
+            }
+
+            if (!matched && /^\d+\.\s+/.test(line)) {
+              if (currentList !== "ol") {
+                if (currentList) {
+                  processedLines.push(currentList === "ol" ? "</ol>" : "</ul>");
+                }
+                processedLines.push(
+                  '<ol style="margin: 0.5em 0; padding-left: 1.5em;">'
+                );
+                currentList = "ol";
+              }
+
+              processedLines.push(
+                "<li>" + line.replace(/^\d+\.\s+/, "") + "</li>"
+              );
+              matched = true;
+            }
+
+            if (!matched) {
+              if (currentList) {
+                processedLines.push(currentList === "ol" ? "</ol>" : "</ul>");
+                currentList = null;
+              }
+
+              processedLines.push(line);
+            }
+          }
+
+          if (currentList) {
+            processedLines.push(currentList === "ol" ? "</ol>" : "</ul>");
+          }
+
+          text = processedLines.join("\n");
+        }
+
+        text = text.replace(/\n\s*\n/g, "<br><br>");
+
+        text = text.replace(/\n/g, "<br>");
+
+        return text;
+      }
+
+      window.formatMessage = formatMessage;
+
+      function applyCustomStyles() {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = `
+                .pai-chat-send-button {
+                    background-color: ${config.sendButtonColor} !important;
+                }
+                .pai-chat-message.ai {
+                    background-color: ${config.aiMessageColor} !important;
+                    color: ${config.aiMessageTextColor} !important;
+                }
+                .pai-chat-message.user {
+                    background-color: ${config.userMessageColor} !important;
+                    color: ${config.userMessageTextColor} !important;
+                }
+                .pai-chat-typing-indicator span {
+                    background-color: ${config.typingIndicatorColor} !important;
+                }
+                .pai-chat-overlay {
+                    background-color: ${config.overlayColor} !important;
+                    backdrop-filter: blur(${config.overlayBlur}) !important;
+                }
+            `;
+        document.head.appendChild(styleEl);
+      }
+
+      function announce(message, priority = "polite") {
+        if (
+          !chatWidget.classList.contains("pai-chat-open") &&
+          !message.includes("closed") &&
+          !message.includes("minimized")
+        ) {
+          return;
+        }
+
+        if (message === lastAnnouncement && announceTimeoutId) {
+          return;
+        }
+
+        if (announceTimeoutId) {
+          clearTimeout(announceTimeoutId);
+        }
+
+        lastAnnouncement = message;
+
+        let liveRegion = document.getElementById("aria-live-region");
+        if (!liveRegion) {
+          liveRegion = document.createElement("div");
+          liveRegion.setAttribute("id", "aria-live-region");
+          liveRegion.classList.add("sr-only");
+          liveRegion.setAttribute("aria-live", priority);
+          liveRegion.setAttribute("aria-atomic", "true");
+          document.body.appendChild(liveRegion);
+        }
+
+        liveRegion.setAttribute("aria-live", priority);
+
+        liveRegion.textContent = "";
+
+        announceTimeoutId = setTimeout(() => {
+          liveRegion.textContent = message;
+          announceTimeoutId = null;
+        }, 100);
+      }
+
+      function stopAnnouncements() {
+        if (announceTimeoutId) {
+          clearTimeout(announceTimeoutId);
+          announceTimeoutId = null;
+        }
+
+        const liveRegion = document.getElementById("aria-live-region");
+        if (liveRegion) {
+          liveRegion.textContent = "";
+        }
+      }
+
+      function trapFocus(element) {
+        const focusableElements = element.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstFocusableElement = focusableElements[0];
+        const lastFocusableElement =
+          focusableElements[focusableElements.length - 1];
+
+        element.addEventListener("keydown", function (e) {
+          if (e.key === "Tab") {
+            if (e.shiftKey) {
+              if (document.activeElement === firstFocusableElement) {
+                lastFocusableElement.focus();
+                e.preventDefault();
+              }
+            } else {
+              if (document.activeElement === lastFocusableElement) {
+                firstFocusableElement.focus();
+                e.preventDefault();
+              }
+            }
+          }
+        });
+      }
+
+      function updateMessagesFocus() {
+        const messages = chatMessages.querySelectorAll(
+          '.pai-chat-message:not([data-accessible="true"])'
+        );
+        messages.forEach((message) => {
+          message.setAttribute("data-accessible", "true");
+
+          const messageHeader = message.querySelector(
+            ".pai-chat-message-header"
+          );
+          const messageName = message.querySelector(".pai-chat-message-name");
+
+          if (messageName && !messageName.tagName.match(/^H[1-6]$/)) {
+            if (messageName.tagName !== "H3") {
+              const heading = document.createElement("h3");
+              heading.classList.add("pai-chat-message-name");
+              heading.textContent = messageName.textContent;
+              messageHeader.replaceChild(heading, messageName);
+            }
+          }
+
+          const messageText = message.querySelector(".pai-chat-message-text");
+          if (messageText) {
+            const sender = message.classList.contains("ai")
+              ? config.chatbotName
+              : "You";
+            const time = message.querySelector(
+              ".pai-chat-message-time"
+            ).textContent;
+
+            message.setAttribute(
+              "aria-label",
+              `Message from ${sender} at ${time}`
+            );
+
+            if (!message.hasAttribute("data-announced")) {
+              message.setAttribute("data-announced", "true");
+            }
+          }
+        });
+      }
+
+      const observer = new MutationObserver(updateMessagesFocus);
+      observer.observe(chatMessages, { childList: true });
+
+      // Initialize chat widget
+      function initializeChat() {
+        document.getElementById("ai-avatar-header").src = config.aiAvatarUrl;
+        document.getElementById(
+          "chat-title"
+        ).textContent = `Chat with ${config.chatbotName}`;
+
+        chatWidget.classList.remove("pai-chat-closed");
+        chatWidget.classList.add("pai-chat-open");
+        chatWindow.style.display = "flex";
+        chatWindow.style.opacity = "1";
+        chatWindow.setAttribute("aria-hidden", "false");
+
+        chatWindow.setAttribute("tabindex", "-1");
+
+        chatWindow.style.zIndex = "9999";
+
+        trapFocus(chatWindow);
+
+        addAIMessage(initialMessage, true);
+        initialMessageSent = true;
+
+        requestAnimationFrame(() => {
+          typeWelcomeMessage();
+        });
+
+        resetInputState();
+      }
+
+      function closeChat() {
+        chatWidget.setAttribute("data-previous-state", "open");
+
+        chatWidget.classList.remove("pai-chat-open");
+        chatWidget.classList.add("pai-chat-closed");
+        chatWindow.style.display = "none";
+        chatWindow.setAttribute("aria-hidden", "true");
+
+        const closeAnnouncer = document.createElement("div");
+        closeAnnouncer.id = "close-announcer";
+        closeAnnouncer.setAttribute("role", "status");
+        closeAnnouncer.setAttribute("aria-live", "assertive");
+        closeAnnouncer.setAttribute("tabindex", "0");
+        closeAnnouncer.classList.add("sr-only");
+        closeAnnouncer.textContent = `Chat with ${config.chatbotName} closed`;
+        document.body.appendChild(closeAnnouncer);
+
+        closeAnnouncer.focus();
+
+        setTimeout(() => {
+          if (document.body.contains(closeAnnouncer)) {
+            document.body.removeChild(closeAnnouncer);
+          }
+
+          if (lastFocusedElement) {
+            lastFocusedElement.focus();
+          }
+        }, 2000);
+      }
+
+      function addScreenReaderStatus() {
+        const statusRegion = document.createElement("div");
+        statusRegion.id = "sr-status-region";
+        statusRegion.className = "sr-only";
+        statusRegion.setAttribute("aria-live", "polite");
+        statusRegion.setAttribute("role", "status");
+        document.body.appendChild(statusRegion);
+
+        window.updateScreenReaderStatus = function (status) {
+          if (chatWidget.classList.contains("pai-chat-open")) {
+            statusRegion.textContent = status;
+          }
+        };
+      }
+
+      function addAIMessage(message, isInitial = false) {
+        const aiMessageElement = document.createElement("div");
+        aiMessageElement.classList.add("pai-chat-message", "ai");
+        aiMessageElement.setAttribute("role", "article");
+
+        let messageContent = isInitial ? "" : formatMessage(message);
+
+        aiMessageElement.innerHTML = `
+                <img src="${config.aiAvatarUrl}" 
+                    alt="" 
+                    class="pai-chat-message-avatar"
+                    aria-hidden="true">
+                <div class="pai-chat-message-content">
+                    <div class="pai-chat-message-header">
+                        <h3 class="pai-chat-message-name">${
+                          config.chatbotName
+                        }</h3>
+                        <span class="pai-chat-message-time">${getCurrentTime()}</span>
+                    </div>
+                    <div class="pai-chat-message-text">${messageContent}</div>
+                </div>
+            `;
+
+        const messageTextElement = aiMessageElement.querySelector(
+          ".pai-chat-message-text"
+        );
+        if (!isInitial) {
+          messageTextElement.setAttribute("aria-hidden", "true");
+
+          const plainTextMessage = message.replace(/<[^>]*>/g, "");
+          aiMessageElement.setAttribute("data-announced", "true");
+          announce(`${config.chatbotName} says: ${plainTextMessage}`, "polite");
+
+          setTimeout(() => {
+            if (fixedInput) fixedInput.focus();
+          }, 500);
+        }
+
+        chatMessages.appendChild(aiMessageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+
+      function addMessageReadingControls() {
+        const controlsContainer = document.createElement("div");
+        controlsContainer.classList.add("sr-only", "message-controls");
+        controlsContainer.setAttribute("aria-live", "polite");
+        controlsContainer.style.position = "absolute";
+        controlsContainer.style.left = "-9999px";
+
+        const messagesNav = document.createElement("nav");
+        messagesNav.setAttribute("aria-label", "Chat messages navigation");
+
+        const messagesHeading = document.createElement("h2");
+        messagesHeading.classList.add("sr-only");
+        messagesHeading.textContent = "Chat Messages";
+        chatMessages.insertAdjacentElement("afterbegin", messagesHeading);
+
+        const readMessagesButton = document.createElement("button");
+        readMessagesButton.textContent = "Read latest messages";
+        readMessagesButton.setAttribute("aria-hidden", "true"); 
+        readMessagesButton.addEventListener("click", function () {
+          const messages = chatMessages.querySelectorAll(".pai-chat-message");
+          const lastFewMessages = Array.from(messages).slice(-3); 
+
+          lastFewMessages.forEach((message, index) => {
+            const messageText = message.querySelector(".pai-chat-message-text");
+            if (messageText) {
+              const plainText = messageText.textContent;
+              const sender = message.classList.contains("ai")
+                ? config.chatbotName
+                : "You";
+              setTimeout(() => {
+                announce(`${sender}: ${plainText}`, "assertive");
+              }, index * 2000); 
+            }
+          });
+
+          setTimeout(() => {
+            if (fixedInput) fixedInput.focus();
+          }, lastFewMessages.length * 2000 + 500);
+        });
+
+        const shortcutInfo = document.createElement("p");
+        shortcutInfo.classList.add("sr-only");
+        shortcutInfo.textContent = "";
+
+        controlsContainer.appendChild(shortcutInfo);
+        messagesNav.appendChild(readMessagesButton);
+        controlsContainer.appendChild(messagesNav);
+        chatWindow.appendChild(controlsContainer);
+
+        // Add keyboard shortcut
+        document.addEventListener("keydown", function (e) {
+          if (
+            e.altKey &&
+            e.key === "h" &&
+            chatWidget.classList.contains("pai-chat-open")
+          ) {
+            e.preventDefault();
+            announce(
+              "Chat navigation shortcuts: Escape to close chat. Press Enter to send a message.",
+              "assertive"
+            );
+          }
+
+          if (
+            e.altKey &&
+            e.key === "r" &&
+            chatWidget.classList.contains("pai-chat-open")
+          ) {
+            e.preventDefault();
+            readMessagesButton.click();
+          }
+        });
+      }
+
+      async function sendMessage(message) {
+  if (!message.trim()) return;
+
+  if (fixedInput) {
+    fixedInput.value = "";
+    fixedInput.style.height = "auto";
+  }
+
+  const userMessageElement = document.createElement("div");
+  userMessageElement.classList.add("pai-chat-message", "user");
+  userMessageElement.setAttribute("role", "article");
+
+  const formattedUserMessage = formatMessage(message);
+
+  userMessageElement.innerHTML = `
+    <img src="${config.userAvatarUrl}" 
+         alt="" 
+         class="pai-chat-message-avatar"
+         aria-hidden="true">
+    <div class="pai-chat-message-content">
+        <div class="pai-chat-message-header">
+            <h3 class="pai-chat-message-name">You</h3>
+            <span class="pai-chat-message-time">${getCurrentTime()}</span>
+        </div>
+        <div class="pai-chat-message-text">${formattedUserMessage}</div>
+    </div>
+  `;
+
+  chatMessages.appendChild(userMessageElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  announce("Message sent: " + message, "polite");
+
+  if (fixedInput) {
+    fixedInput.focus();
+  }
+
+  const aiMessageElement = document.createElement("div");
+  aiMessageElement.classList.add("pai-chat-message", "ai");
+  aiMessageElement.setAttribute("role", "article");
+
+  const typingIndicatorHTML = `
+    <img src="${config.aiAvatarUrl}" 
+         alt="" 
+         class="pai-chat-message-avatar"
+         aria-hidden="true">
+    <div class="pai-chat-message-content">
+        <div class="pai-chat-message-header">
+            <h3 class="pai-chat-message-name">${config.chatbotName}</h3>
+            <span class="pai-chat-message-time">${getCurrentTime()}</span>
+        </div>
+        <div class="pai-chat-message-text">
+            <div class="pai-chat-typing-indicator" aria-label="${config.chatbotName} is typing">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </div>
+  `;
+
+  aiMessageElement.innerHTML = typingIndicatorHTML;
+  chatMessages.appendChild(aiMessageElement);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  announce(`${config.chatbotName} is typing...`, "polite");
+
+  let aiResponse = "";
+  let isAiResponseComplete = false;
+
+  try {
+    const response = await fetch(config.apiEndpoint, {
+      method: "POST",
+      headers: {
+  "Content-Type": "application/json",
+},
+      body: JSON.stringify({
+        Text: message,
+        UserName: "Visitor",
+        SourceName: `${config.chatbotName} Chatbot`,
+        SessionId: sessionId,
+        DomainName: config.domainName,
+        is_draft: false,
+      }),
+    });
+
+    const messageTextElement = aiMessageElement.querySelector(".pai-chat-message-text");
+
+    if (!response.ok) {
+      console.error("Error response:", response.status);
+      aiResponse = "I apologize, but I'm having trouble connecting right now. Please try again.";
+      isAiResponseComplete = true;
+    } else {
+      // Handle the streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let receivedAnyData = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        console.log("Received chunk:", chunk);
+        
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            try {
+              const jsonDataString = line.slice(5);
+              console.log("JSON data string:", jsonDataString);
+              
+              const jsonData = JSON.parse(jsonDataString);
+              console.log("Parsed JSON data:", jsonData);
+              
+              if (jsonData.ai_message !== undefined) {
+                receivedAnyData = true;
+                aiResponse = jsonData.ai_message || "";
+                
+                messageTextElement.innerHTML = `<div aria-hidden="true">${formatMessage(aiResponse)}</div>`;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Check if the response has a follow-up flag
+                if (jsonData.has_followup && jsonData.session_id) {
+                  // Make an immediate follow-up request to get the next part of the conversation
+                  setTimeout(() => {
+                    sendFollowupRequest(jsonData.session_id);
+                  }, 1500); // Short delay for natural conversation flow
+                }
+              }
+            } catch (e) {
+              console.error("Error parsing JSON:", e, "Line:", line);
+            }
+          }
+        }
+      }
+
+      // If we received no data at all, handle it
+      if (!receivedAnyData) {
+        console.error("No data received from streaming response");
+        aiResponse = "I received your message but couldn't generate a response. Please try again.";
+      }
+
+      isAiResponseComplete = true;
+    }
+  } catch (error) {
+    console.error("API Error:", error);
+    aiResponse = "I apologize, but I'm having trouble responding right now. Please try again.";
+    isAiResponseComplete = true;
+  }
+
+  const messageTextElement = aiMessageElement.querySelector(".pai-chat-message-text");
+
+  const formattedAIResponse = formatMessage(
+    aiResponse || "I apologize, but I'm having trouble responding right now. Please try again."
+  );
+  messageTextElement.innerHTML = formattedAIResponse;
+
+  messageTextElement.setAttribute("aria-hidden", "true");
+
+  aiMessageElement.setAttribute("data-message-complete", "true");
+  aiMessageElement.setAttribute("data-announced", "true"); // Mark as already announced
+
+  if (isAiResponseComplete && chatWidget.classList.contains("pai-chat-open")) {
+    const plainTextResponse = aiResponse.replace(/<[^>]*>/g, "");
+    announce(`${config.chatbotName} says: ${plainTextResponse}`, "polite");
+  }
+
+  setTimeout(() => {
+    if (fixedInput) {
+      fixedInput.focus();
+    }
+  }, 500);
+}
+
+// New function to send a follow-up request
+async function sendFollowupRequest(sessionId) {
+  try {
+    console.log("Sending follow-up request for session:", sessionId);
+    
+    // Create a new AI message element for the follow-up
+    const aiMessageElement = document.createElement("div");
+    aiMessageElement.classList.add("pai-chat-message", "ai");
+    aiMessageElement.setAttribute("role", "article");
+
+    const typingIndicatorHTML = `
+      <img src="${config.aiAvatarUrl}" 
+           alt="" 
+           class="pai-chat-message-avatar"
+           aria-hidden="true">
+      <div class="pai-chat-message-content">
+          <div class="pai-chat-message-header">
+              <h3 class="pai-chat-message-name">${config.chatbotName}</h3>
+              <span class="pai-chat-message-time">${getCurrentTime()}</span>
+          </div>
+          <div class="pai-chat-message-text">
+              <div class="pai-chat-typing-indicator" aria-label="${config.chatbotName} is typing">
+                  <span></span><span></span><span></span>
+              </div>
+          </div>
+      </div>
+    `;
+
+    aiMessageElement.innerHTML = typingIndicatorHTML;
+    chatMessages.appendChild(aiMessageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    announce(`${config.chatbotName} is typing...`, "polite");
+    
+    // This is an empty message to trigger the server to send the follow-up prompt
+    // The server will detect that there's a queued follow-up for this session
+    const response = await fetch(config.apiEndpoint, {
+      method: "POST",
+      headers: {
+  "Content-Type": "application/json",
+},
+      body: JSON.stringify({
+        Text: "",  // Empty message
+        UserName: "Visitor",
+        SourceName: `${config.chatbotName} Chatbot`,
+        SessionId: sessionId,
+        DomainName: config.domainName,
+        is_draft: false,
+      }),
+    });
+    
+    // Process the follow-up response
+    const messageTextElement = aiMessageElement.querySelector(".pai-chat-message-text");
+    let followupResponse = "";
+    
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      console.log("Follow-up chunk:", chunk);
+      
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data:")) {
+          try {
+            const jsonDataString = line.slice(5);
+            console.log("Follow-up JSON data:", jsonDataString);
+            
+            const jsonData = JSON.parse(jsonDataString);
+            
+            if (jsonData.ai_message !== undefined) {
+              followupResponse = jsonData.ai_message || "";
+              messageTextElement.innerHTML = `<div aria-hidden="true">${formatMessage(
+                followupResponse
+              )}</div>`;
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+          } catch (e) {
+            console.error("Error parsing follow-up JSON:", e);
+          }
+        }
+      }
+    }
+    
+    // Final message formatting
+    const formattedFollowupResponse = formatMessage(
+      followupResponse || "Let's continue with the next step."
+    );
+    messageTextElement.innerHTML = formattedFollowupResponse;
+    
+    aiMessageElement.setAttribute("data-message-complete", "true");
+    aiMessageElement.setAttribute("data-announced", "true");
+    
+    const plainTextResponse = followupResponse.replace(/<[^>]*>/g, "");
+    announce(`${config.chatbotName} says: ${plainTextResponse}`, "polite");
+    
+    if (fixedInput) {
+      fixedInput.focus();
+    }
+    
+  } catch (error) {
+    console.error("Error sending follow-up request:", error);
+    // Show an error message in the chat if the follow-up request fails
+    const errorMessageElement = document.createElement("div");
+    errorMessageElement.classList.add("pai-chat-message", "ai");
+    errorMessageElement.setAttribute("role", "article");
+    
+    errorMessageElement.innerHTML = `
+      <img src="${config.aiAvatarUrl}" 
+           alt="" 
+           class="pai-chat-message-avatar"
+           aria-hidden="true">
+      <div class="pai-chat-message-content">
+          <div class="pai-chat-message-header">
+              <h3 class="pai-chat-message-name">${config.chatbotName}</h3>
+              <span class="pai-chat-message-time">${getCurrentTime()}</span>
+          </div>
+          <div class="pai-chat-message-text">
+            ${formatMessage("Let's continue with the next step. What else would you like to know about setting up your AI receptionist?")}
+          </div>
+      </div>
+    `;
+    
+    chatMessages.appendChild(errorMessageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
+
+      function getCurrentTime() {
+        return new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function handleEscapeKey(event) {
+        if (event.key === "Escape") {
+          if (chatWidget.classList.contains("pai-chat-open")) {
+            closeChat();
+          }
+        }
+      }
+
+      function resetInputState() {
+        if (fixedInput) {
+          fixedInput.disabled = false;
+          fixedInput.value = "";
+          fixedInput.style.height = "auto";
+
+          const clone = fixedInput.cloneNode(true);
+          if (fixedInput.parentNode) {
+            fixedInput.parentNode.replaceChild(clone, fixedInput);
+            fixedInput = clone;
+
+            setupInputEventListeners();
+          }
+
+          fixedInput.style.pointerEvents = "auto";
+
+          fixedInput.setAttribute("aria-disabled", "false");
+
+          const inputWrapper = document.querySelector(
+            ".pai-chat-footer-input-wrapper"
+          );
+          if (inputWrapper) {
+            inputWrapper.style.pointerEvents = "auto";
+          }
+
+          inputEnabled = true;
+        }
+      }
+
+      function setupInputEventListeners() {
+        if (fixedInput) {
+          const newInput = fixedInput.cloneNode(true);
+          fixedInput.parentNode.replaceChild(newInput, fixedInput);
+          fixedInput = newInput;
+
+          fixedInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              sendMessage(this.value);
+
+              announce("Message sent", "polite");
+
+              setTimeout(() => {
+                this.focus();
+              }, 50);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              closeChat();
+            }
+
+            setTimeout(() => {
+              this.style.height = "auto";
+              this.style.height = Math.min(this.scrollHeight, 100) + "px";
+            }, 0);
+          });
+
+          fixedInput.addEventListener("click", function () {
+            if (!inputEnabled) {
+              resetInputState();
+              this.focus();
+            }
+          });
+        }
+      }
+
+      function setupInputObserver() {
+        const inputContainer = document.querySelector(
+          ".pai-chat-footer-input-wrapper"
+        );
+        if (inputContainer && fixedInput) {
+          const observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
+              if (
+                mutation.type === "attributes" &&
+                (mutation.attributeName === "disabled" ||
+                  mutation.attributeName === "style")
+              ) {
+                if (
+                  fixedInput.disabled ||
+                  fixedInput.style.pointerEvents === "none" ||
+                  window.getComputedStyle(fixedInput).pointerEvents === "none"
+                ) {
+                  resetInputState();
+                }
+              }
+            });
+          });
+
+          observer.observe(fixedInput, {
+            attributes: true,
+            attributeFilter: ["disabled", "style", "aria-disabled"],
+          });
+        }
+      }
+
+      function setupCloseButton() {
+        const chatClose = document.querySelector(".pai-chat-close");
+        if (!chatClose) return;
+
+        const styleEl = document.createElement("style");
+        styleEl.textContent = `
+        /* Hide focus rings on close button, but keep them visible for keyboard navigation */
+        .pai-chat-close:focus:not(:focus-visible) {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Make sure keyboard focus is still visible */
+        .pai-chat-close:focus-visible {
+            outline: 3px solid #2196F3 !important;
+            outline-offset: 2px !important;
+        }
+    `;
+        document.head.appendChild(styleEl);
+
+        chatClose.setAttribute(
+          "aria-label",
+          `Close chat with ${config.chatbotName}`
+        );
+
+        chatClose.addEventListener("click", function () {
+          closeChat();
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const inputWrapper = document.querySelector(
+          ".pai-chat-footer-input-wrapper"
+        );
+        if (inputWrapper) {
+          inputWrapper.addEventListener("click", function (e) {
+            if (e.target === this && fixedInput) {
+              resetInputState();
+              fixedInput.focus();
+            }
+          });
+        }
+
+        setupInputEventListeners();
+        setupInputObserver();
+      });
+
+      window.addEventListener("focus", function () {
+        if (chatWidget.classList.contains("pai-chat-open") && fixedInput) {
+          if (
+            fixedInput.disabled ||
+            window.getComputedStyle(fixedInput).pointerEvents === "none"
+          ) {
+            resetInputState();
+          }
+        }
+      });
+
+      // Event listener for the escape key
+      document.addEventListener("keydown", handleEscapeKey);
+
+      // Send button event listener
+      if (sendButton) {
+        sendButton.addEventListener("click", function () {
+          if (fixedInput) {
+            const message = fixedInput.value;
+            sendMessage(message);
+            setTimeout(() => fixedInput.focus(), 50);
+          }
+        });
+      }
+
+      // Close button event listener
+      if (chatClose) {
+        chatClose.addEventListener("click", function () {
+          closeChat();
+        });
+      }
+
+      applyCustomStyles();
+
+      initializeChat();
+
+      addMessageReadingControls();
+
+      addScreenReaderStatus();
+
+      setupCloseButton();
+    }
+
+    injectStyles();
+    injectHTML();
+    initializeChatbot();
+})();
+</script>
+</body>
+</html>
