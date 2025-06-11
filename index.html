@@ -23,10 +23,15 @@
     return isSharePoint;
   }
 
-  if (!isRunningInSharePoint()) {
-    console.warn('Chatbot disabled: Not running in authorized environment');
-    
-    // Show error message instead of chatbot
+if (!isRunningInSharePoint()) {
+  console.warn('Chatbot disabled: Not running in authorized environment');
+  
+  // FOR TESTING: Allow vercel.app domains
+  if (window.location.hostname.includes('vercel.app')) {
+    console.log('Testing mode: Allowing vercel.app domain');
+    // Continue to chatbot initialization
+  } else {
+    // Show error message for other unauthorized domains
     const errorHTML = `
       <div style="
         position: fixed; 
@@ -48,8 +53,9 @@
     `;
     
     document.body.innerHTML = errorHTML;
-    return; // Stop execution
+    return; 
   }
+}
 
   if (window.top !== window.self && !isRunningInSharePoint()) {
     console.warn('Chatbot disabled: Unauthorized embedding detected');
