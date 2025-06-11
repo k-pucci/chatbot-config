@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
   const allowedOrigins = [
     'https://personalai.sharepoint.com',
+    'https://chatbot-config-mk4v5gbgx-katelyn-puccis-projects.vercel.app', // for testing
+
 
   ];
   
