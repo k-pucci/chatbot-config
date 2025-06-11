@@ -899,6 +899,27 @@ if (!isAuthorizedDomain) {
       }
     }
 
+  function validateSharePointAccess() {
+  const referrer = document.referrer;
+  const openedInNewTab = window.history.length === 1;
+  
+  return openedInNewTab && referrer.includes('sharepoint.com');
+}
+
+// Add to existing security check
+if (!isRunningInSharePoint()) {
+  if (!validateSharePointAccess()) {
+    // Show access denied message
+    document.body.innerHTML = `
+      <div style="text-align: center; padding: 50px; font-family: Arial;">
+        <h2>Access Denied</h2>
+        <p>Please access this chatbot through the SharePoint page.</p>
+      </div>
+    `;
+    return;
+  }
+}
+
     // Core functionality
     function initializeChatbot() {
       const chatWidget = document.getElementById("personal-ai-chat-widget");
