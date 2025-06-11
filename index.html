@@ -62,20 +62,21 @@ if (!isRunningInSharePoint()) {
     return;
   }
 
-  const allowedDomains = [
-    'sharepoint.com',
-    'personalai.sharepoint.com'
-  ];
+const allowedDomains = [
+  'sharepoint.com',
+  'personalai.sharepoint.com', 
+  'vercel.app'
+];
 
-  const currentDomain = window.location.hostname.toLowerCase();
-  const isAuthorizedDomain = allowedDomains.some(domain => 
-    currentDomain.includes(domain)
-  );
+const currentDomain = window.location.hostname.toLowerCase();
+const isAuthorizedDomain = allowedDomains.some(domain => 
+  currentDomain.includes(domain)
+);
 
-  if (!isAuthorizedDomain) {
-    console.warn('Chatbot disabled: Unauthorized domain');
-    return;
-  }
+if (!isAuthorizedDomain) {
+  console.warn('Chatbot disabled: Unauthorized domain');
+  return;
+}
 
   if (window.location.protocol === 'file:') {
     console.warn('Chatbot disabled: Direct file access not allowed');
