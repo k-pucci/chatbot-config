@@ -41,44 +41,58 @@ export default async function handler(req, res) {
     });
   }
 
-  try {
-    // Make the request to your actual API
-    const response = await fetch(process.env.ACTUAL_API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ACTUAL_API_KEY,
-      },
-      body: JSON.stringify(req.body),
-    });
+try {
+  console.log('Making request to Personal.ai API...');
+  
+  // Make the request to Personal.ai API with correct format
+  const response = await fetch(process.env.ACTUAL_API_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ACTUAL_API_KEY,
+    },
+    body: JSON.stringify({
+      Text: req.body.Text || '',
+      UserName: req.body.UserName || 'Visitor',
+      SourceName: req.body.SourceName || 'Chatbot',
+      SessionId: req.body.SessionId || `session_${Date.now()}`,
+      DomainName: req.body.DomainName || 'default',
+      is_draft: req.body.is_draft || false,
+    }),
+  });
 
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
+  console.log('Personal.ai API response status:', response.status);
 
-    // Handle streaming response
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      const chunk = decoder.decode(value);
-      res.write(chunk);
-    }
-    
-    res.end();
-
-  } catch (error) {
-    console.error('API Error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Failed to process chat request'
-    });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Personal.ai API error:', errorText);
+    throw new Error(`Personal.ai API responded with status: ${response.status}`);
   }
+
+  // Handle streaming response from Personal.ai
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    const chunk = decoder.decode(value);
+    res.write(chunk);
+  }
+  
+  res.end();
+
+} catch (error) {
+  console.error('API Error:', error);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: 'Failed to process chat request',
+    details: error.message
+  });
+}
 }
